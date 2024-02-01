@@ -54,10 +54,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final Completer<WebViewController> _controller =
-      Completer<WebViewController>();
+  late WebViewController _controller = WebViewController();
   bool _isConnected = true;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -65,13 +64,40 @@ class _MyHomePageState extends State<MyHomePage> {
     checkConnectivity();
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       setState(() {
+        _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(const Color(0x00000000))
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onProgress: (int progress) {
+              setState(() {
+                _isLoading = true;
+              });
+            },
+            onPageStarted: (String url) {},
+            onPageFinished: (String url) {
+              setState(() {
+                _isLoading = false;
+              });
+            },
+            onWebResourceError: (WebResourceError error) {
+              print("====================================");
+              print(error);
+              print("====================================");
+              setState(() {
+                _isLoading = false;
+              });
+            },
+            // onNavigationRequest: (NavigationRequest request) {
+            //   // if (request.url.startsWith('https://iys-uk.org/')) {
+            //   //   return NavigationDecision.prevent;
+            //   // }
+            //   return NavigationDecision.navigate;
+            // },
+          ),
+        )
+        ..loadRequest(Uri.parse('https://iys-uk.org/'));
         _isConnected = (result != ConnectivityResult.none);
-      });
-    });
-
-    Future.delayed(Duration(seconds: 3), () {
-      setState(() {
-        _isLoading = false;
       });
     });
   }
@@ -92,30 +118,29 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Color(0xff034803),
         actions: [
           IconButton(
-            icon: Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back,color:Colors.white),
             onPressed: () async {
               // Go to the previous page
-              final controller = await _controller.future;
-              if (await controller.canGoBack()) {
-                controller.goBack();
+              if (await _controller.canGoBack()) {
+                _controller.goBack();
               }
             },
           ),
           IconButton(
-            icon: Icon(Icons.arrow_forward),
+            icon: Icon(Icons.arrow_forward,color:Colors.white),
             onPressed: () async {
               // Go to the next page
-              final controller = await _controller.future;
-              if (await controller.canGoForward()) {
-                controller.goForward();
+              if (await _controller.canGoForward()) {
+                _controller.goForward();
               }
             },
           ),
           IconButton(
-            icon: Icon(Icons.refresh),
+            icon: Icon(Icons.refresh,color:Colors.white),
             onPressed: () {
               // Refresh the WebView
-              _controller.future.then((controller) => controller.reload());
+              _controller.reload()
+              ;
             },
           ),
         ],
@@ -123,19 +148,16 @@ class _MyHomePageState extends State<MyHomePage> {
       body: _isConnected
           ? Stack(
               children: [
-                WebView(
-                  backgroundColor: Colors.white,
-                  initialUrl: 'https://iys-uk.org',
-                  javascriptMode: JavascriptMode.unrestricted,
-                  onWebViewCreated: (WebViewController webViewController) {
-                    _controller.complete(webViewController);
-                  },
-                ),
+                WebViewWidget(controller: _controller),
                 if (_isLoading)
-                  Center(
-                    child: SpinKitCircle(
-                      color: Color(0xff034803),
-                      size: 50.0,
+                  Container(
+                    color: Color.fromARGB(108, 255, 255, 255),
+                    height: MediaQuery.sizeOf(context).height,
+                    width: MediaQuery.sizeOf(context).width,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xff034803),
+                      ),
                     ),
                   ),
               ],
